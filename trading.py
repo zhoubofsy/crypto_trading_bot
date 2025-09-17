@@ -79,20 +79,26 @@ class VirtualTrader:
         cursor.execute('INSERT INTO virtual_balance (usdc_balance) VALUES (?)', (new_balance,))
         conn.commit()
         conn.close()
-    
+
     def record_trade(self, symbol: str, action: str, amount: float, price: float, 
                     usdc_amount: float, balance_before: float, balance_after: float,
-                    position_before: float, position_after: float):
+                    position_before: float, position_after: float, signal_reason: str = ""):
         """Record a trading transaction"""
+        from datetime import datetime
+        
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
+        
+        # 添加可读的日期时间格式
+        readable_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
         cursor.execute('''
             INSERT INTO trading_records 
             (symbol, action, amount, price, usdc_amount, balance_before, balance_after, 
-             position_before, position_after)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             position_before, position_after, datetime, signal_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (symbol, action, amount, price, usdc_amount, balance_before, balance_after,
-              position_before, position_after))
+              position_before, position_after, readable_datetime, signal_reason))
         conn.commit()
         conn.close()
 
