@@ -7,17 +7,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'plugins'))
 from trading_framework import TradingFramework
 from plugins.mean_reversion_plugin import MeanReversionPlugin
 from plugins.rsi_plugin import RSIPlugin
-import ccxt
+from trading import OKXTrader
 
 def main():
     """插件管理工具"""
-    # 初始化
-    exchange = ccxt.okx({
-        'apiKey': 'your-api-key',
-        'secret': 'your-secret',
-        'password': 'your-password',
-        'options': {'defaultType': 'swap'},
-    })
+    # 使用统一的OKXTrader获取交易所对象
+    okx_trader = OKXTrader()
+    exchange = okx_trader.get_exchange()
     
     framework = TradingFramework()
     

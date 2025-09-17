@@ -14,9 +14,6 @@ def main():
     parser = argparse.ArgumentParser(description='Get account balance')
     parser.add_argument('--source', choices=['virtual', 'okx'], default='virtual',
                        help='Balance source: virtual or okx (default: virtual)')
-    parser.add_argument('--api-key', help='OKX API key (required for okx source)')
-    parser.add_argument('--secret', help='OKX secret (required for okx source)')
-    parser.add_argument('--password', help='OKX password (required for okx source)')
     
     args = parser.parse_args()
     
@@ -25,14 +22,8 @@ def main():
             balance = get_balance('virtual')
             print(f"Virtual USDC Balance: {balance:.2f}")
         elif args.source == 'okx':
-            if not all([args.api_key, args.secret, args.password]):
-                print("Error: OKX credentials required (--api-key, --secret, --password)")
-                sys.exit(1)
-            
-            balance = get_balance('okx', 
-                                api_key=args.api_key,
-                                secret=args.secret, 
-                                password=args.password)
+            # 现在不需要传递API凭证，直接使用配置文件
+            balance = get_balance('okx')
             print(f"OKX USDC Balance: {balance:.2f}")
     
     except Exception as e:

@@ -37,7 +37,9 @@ class VirtualTrader:
                 balance_after REAL NOT NULL,
                 position_before REAL NOT NULL,
                 position_after REAL NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                datetime TEXT,  -- 添加可读日期时间
+                signal_reason TEXT  -- 添加交易信号原因
             )
         ''')
         
@@ -95,7 +97,7 @@ class VirtualTrader:
         conn.close()
 
     def virtual_buy(self, symbol: str, current_price: float, buy_amount_usdc: float = 50.0, 
-                   max_position_usdc: float = None) -> Tuple[float, float]:
+                   max_position_usdc: float = None, signal_reason: str = "") -> Tuple[float, float]:
         """执行虚拟买入交易"""
         usdc_balance = self.get_usdc_balance()
         
@@ -131,11 +133,12 @@ class VirtualTrader:
         self.update_balance(new_usdc_balance)
         self.update_position(symbol, new_position_size, new_avg_price, new_total_cost)
         self.record_trade(symbol, 'BUY', amount_to_buy, current_price, buy_amount_usdc,
-                         usdc_balance, new_usdc_balance, position_size, new_position_size)
+                         usdc_balance, new_usdc_balance, position_size, new_position_size, signal_reason)
         
         return new_usdc_balance, new_position_size
 
-    def virtual_sell(self, symbol: str, current_price: float, sell_percentage: float = 1.0) -> Tuple[float, float]:
+    def virtual_sell(self, symbol: str, current_price: float, sell_percentage: float = 1.0, 
+                    signal_reason: str = "") -> Tuple[float, float]:
         """执行虚拟卖出交易"""
         # 获取当前持仓
         position_size, avg_price, total_cost = self.get_position(symbol)
@@ -172,7 +175,7 @@ class VirtualTrader:
         self.update_balance(new_usdc_balance)
         self.update_position(symbol, new_position_size, new_avg_price, new_total_cost)
         self.record_trade(symbol, 'SELL', amount_to_sell, current_price, usdc_gained,
-                         usdc_balance, new_usdc_balance, position_size, new_position_size)
+                         usdc_balance, new_usdc_balance, position_size, new_position_size, signal_reason)
         
         return new_usdc_balance, new_position_size
 
@@ -232,59 +235,89 @@ class VirtualTrader:
         return positions
 
 class OKXTrader:
-    def __init__(self, api_key: str, secret: str, password: str):
-        self.exchange = ccxt.okx({
-            'apiKey': api_key,
-            'secret': secret,
-            'password': password,
-            'options': {'defaultType': 'swap'},
-        })
+    _instance = None
+    _exchange = None
+    
+    def __new__(cls):
+        """单例模式，确保只有一个OKXTrader实例"""
+        if cls._instance is None:
+            cls._instance = super(OKXTrader, cls).__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if self._exchange is None:
+            self._init_exchange()
+    
+    def _init_exchange(self):
+        """初始化交易所连接"""
+        from config import Config
+        
+        config = Config.get_okx_config()
+        self._exchange = ccxt.okx(config)
+        
+        # 测试连接
+        try:
+            self._exchange.load_markets()
+            print("✓ OKX交易所连接成功")
+        except Exception as e:
+            print(f"✗ OKX交易所连接失败: {e}")
+            raise
+    
+    def get_exchange(self):
+        """获取交易所对象"""
+        if self._exchange is None:
+            self._init_exchange()
+        return self._exchange
     
     def get_usdc_balance(self) -> float:
         """Get actual USDC balance from OKX"""
         try:
-            balance = self.exchange.fetch_balance()
+            balance = self._exchange.fetch_balance()
             return balance.get('USDC', {}).get('free', 0.0)
         except Exception as e:
             print(f"Error fetching OKX balance: {e}")
             return 0.0
+    
+    def reconnect(self):
+        """重新连接交易所"""
+        self._exchange = None
+        self._init_exchange()
 
 def get_balance(source: str = "virtual", **kwargs) -> float:
     """
     Get balance from different sources
     Args:
         source: 'virtual' or 'okx'
-        **kwargs: For OKX: api_key, secret, password
+        **kwargs: 已废弃，现在使用配置文件
     """
     if source == "virtual":
         trader = VirtualTrader()
         return trader.get_usdc_balance()
     elif source == "okx":
-        if not all(k in kwargs for k in ['api_key', 'secret', 'password']):
-            raise ValueError("OKX credentials required: api_key, secret, password")
-        trader = OKXTrader(kwargs['api_key'], kwargs['secret'], kwargs['password'])
+        trader = OKXTrader()
         return trader.get_usdc_balance()
     else:
         raise ValueError("Source must be 'virtual' or 'okx'")
 
 # 添加统一的买卖接口函数
 def buy(source: str = "virtual", symbol: str = "", current_price: float = 0.0, 
-        buy_amount_usdc: float = 50.0, max_position_usdc: float = None, **kwargs) -> Tuple[float, float]:
+        buy_amount_usdc: float = 50.0, max_position_usdc: float = None, 
+        signal_reason: str = "", **kwargs) -> Tuple[float, float]:
     """执行买入操作"""
     if source == "virtual":
         trader = VirtualTrader()
-        return trader.virtual_buy(symbol, current_price, buy_amount_usdc, max_position_usdc)
+        return trader.virtual_buy(symbol, current_price, buy_amount_usdc, max_position_usdc, signal_reason)
     elif source == "okx":
         raise NotImplementedError("OKX 真实交易功能尚未实现")
     else:
         raise ValueError("source 必须是 'virtual' 或 'okx'")
 
 def sell(source: str = "virtual", symbol: str = "", current_price: float = 0.0, 
-         sell_percentage: float = 1.0, **kwargs) -> Tuple[float, float]:
+         sell_percentage: float = 1.0, signal_reason: str = "", **kwargs) -> Tuple[float, float]:
     """执行卖出操作"""
     if source == "virtual":
         trader = VirtualTrader()
-        return trader.virtual_sell(symbol, current_price, sell_percentage)
+        return trader.virtual_sell(symbol, current_price, sell_percentage, signal_reason)
     elif source == "okx":
         raise NotImplementedError("OKX 真实交易功能尚未实现")
     else:

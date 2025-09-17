@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import ccxt
 import time
 import sys
 import os
@@ -10,44 +9,33 @@ from typing import Dict
 sys.path.append(os.path.join(os.path.dirname(__file__), 'plugins'))
 
 from trading_framework import TradingFramework, MarketData, SignalType
-from trading import VirtualTrader, buy, sell, get_position
+from trading import VirtualTrader, OKXTrader, buy, sell, get_position
 from plugins.mean_reversion_plugin import MeanReversionPlugin
 from plugins.rsi_plugin import RSIPlugin
+from config import Config
 
 class OKXTradingBot:
     """OKX交易机器人主类"""
     
     def __init__(self):
-        # 初始化交易所
-        self.exchange = ccxt.okx({
-            'apiKey': '6b2b3a85-c493-43d6-a972-178373d322bf',
-            'secret': 'E2F09392E364BB1EEFA6B10FDDCE8305',
-            'password': 'Max520917&',
-            'options': {'defaultType': 'swap'},
-        })
+        # 从配置文件加载配置
+        Config.from_env()  # 支持从环境变量覆盖配置
         
-        # 初始化框架和交易器
+        # 初始化交易所（使用统一的OKXTrader）
+        self.okx_trader = OKXTrader()
+        self.exchange = self.okx_trader.get_exchange()
+        
+        # 初始化框架和虚拟交易器
         self.framework = TradingFramework()
         self.trader = VirtualTrader()
         
-        # 交易参数
-        self.symbol = 'BTC/USDT'
-        self.check_interval = 65  # 检查间隔（秒）
-        
-        # 连接测试
-        self._test_connection()
+        # 从配置文件获取交易参数
+        trading_config = Config.get_trading_config()
+        self.symbol = trading_config['default_symbol']
+        self.check_interval = trading_config['check_interval']
         
         # 注册插件
         self._register_plugins()
-    
-    def _test_connection(self):
-        """测试交易所连接"""
-        try:
-            self.exchange.load_markets()
-            print("✓ 交易所连接成功")
-        except Exception as e:
-            print(f"✗ 交易所连接失败: {e}")
-            raise
     
     def _register_plugins(self):
         """注册所有插件"""
@@ -96,7 +84,8 @@ class OKXTradingBot:
                 "virtual", 
                 signal.symbol, 
                 signal.price,
-                buy_amount_usdc=signal.amount_usdc or 100.0
+                buy_amount_usdc=signal.amount_usdc or 100.0,
+                signal_reason=signal.reason
             )
             print(f"买入完成，新持仓: {position_size:.4f}")
             
@@ -106,7 +95,8 @@ class OKXTradingBot:
                 "virtual",
                 signal.symbol,
                 signal.price,
-                sell_percentage=signal.sell_percentage or 1.0
+                sell_percentage=signal.sell_percentage or 1.0,
+                signal_reason=signal.reason
             )
             print(f"卖出完成，剩余持仓: {position_size:.4f}")
     

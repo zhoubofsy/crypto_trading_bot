@@ -17,7 +17,9 @@ CREATE TABLE trading_records (
     balance_after REAL NOT NULL,
     position_before REAL NOT NULL,
     position_after REAL NOT NULL,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    datetime TEXT,  -- 添加可读日期时间
+    signal_reason TEXT  -- 添加交易信号原因
 );
 
 -- Initialize virtual balance with 1000 USDC
