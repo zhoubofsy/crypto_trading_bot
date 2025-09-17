@@ -29,7 +29,7 @@ except ImportError:
     except ImportError:
         print("⚠ matplotlib未安装，请先安装: pip install matplotlib")
 
-from chart_viewer import TradingChartViewer
+from charts.k_line import TradingChartViewer
 from datetime import datetime, timedelta
 
 def main():
@@ -41,6 +41,8 @@ def main():
     parser.add_argument('--symbol', default='BTC/USDT', help='交易对符号 (默认: BTC/USDT)')
     parser.add_argument('--timeframe', default='5m', help='时间框架 (默认: 5m)')
     parser.add_argument('--days', type=int, default=7, help='查看最近几天的数据 (默认: 7)')
+    parser.add_argument('--start-date', help='开始日期 (YYYY-MM-DD)')
+    parser.add_argument('--end-date', help='结束日期 (YYYY-MM-DD)')
     parser.add_argument('--static', action='store_true', help='使用静态模式（不支持交互）')
     parser.add_argument('--save', help='保存图片到指定路径（自动使用静态模式）')
 
@@ -49,8 +51,16 @@ def main():
     viewer = TradingChartViewer()
 
     # 计算日期范围
-    end_date = datetime.now().strftime('%Y-%m-%d')
-    start_date = (datetime.now() - timedelta(days=args.days)).strftime('%Y-%m-%d')
+    if hasattr(args, 'start_date') and getattr(args, 'start_date') and hasattr(args, 'end_date') and getattr(args, 'end_date'):
+        # 使用指定的日期范围
+        start_date = getattr(args, 'start_date')
+        end_date = getattr(args, 'end_date')
+        print(f"使用指定日期范围: {start_date} ~ {end_date}")
+    else:
+        # 使用天数计算日期范围
+        end_date = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=args.days)).strftime('%Y-%m-%d')
+        print(f"使用最近{args.days}天: {start_date} ~ {end_date}")
 
     print(f"查看 {args.symbol} 从 {start_date} 到 {end_date} 的{args.timeframe}K线图")
 

@@ -190,6 +190,9 @@ class TradingChartViewer:
         # 打印交易统计
         self._print_trade_statistics(trades_df)
 
+        # 打印交易统计
+        self._print_trade_statistics(trades_df)
+
     def _plot_interactive_kline(self, symbol: str, start_date: str, end_date: str, timeframe: str = '5m'):
         """绘制交互式K线图，支持放大缩小和日期选择"""
         if not INTERACTIVE_AVAILABLE:
@@ -305,7 +308,8 @@ class TradingChartViewer:
                 self._change_date_range(7)
             elif event.key == 'd':
                 print("打开日期选择对话框...")
-                self._show_simple_date_input()
+                # 尝试多种方法来显示日期输入
+                self._show_date_input_multiple_methods()
             elif event.key == 'r':
                 print("重置到原始日期范围")
                 # 重置到原始日期范围
@@ -357,88 +361,44 @@ class TradingChartViewer:
 
     def _show_date_picker(self):
         """显示日期选择对话框（简化版本）"""
-        self._show_simple_date_input()
-
-    def _show_simple_date_input(self):
-        """显示简单的日期输入对话框"""
-        print("正在尝试打开日期输入对话框...")
-
-        # 首先尝试使用 tkinter
-        try:
-            import tkinter as tk
-            from tkinter import simpledialog
-            print("✓ tkinter 导入成功")
-
-            root = tk.Tk()
-            #root.withdraw()  # 隐藏主窗口
-            #root.attributes('-topmost', True)  # 确保对话框在最前面
-
-            print("正在显示开始日期输入框...")
-            start_date = simpledialog.askstring("日期选择",
-                                              "请输入开始日期 (YYYY-MM-DD):\n例如: 2024-01-15",
-                                              parent=root)
-            if start_date:
-                print(f"用户输入开始日期: {start_date}")
-                print("正在显示结束日期输入框...")
-                end_date = simpledialog.askstring("日期选择",
-                                                "请输入结束日期 (YYYY-MM-DD):\n例如: 2024-01-20",
-                                                parent=root)
-                if end_date:
-                    print(f"用户输入结束日期: {end_date}")
-                    try:
-                        # 验证日期格式
-                        datetime.strptime(start_date, '%Y-%m-%d')
-                        datetime.strptime(end_date, '%Y-%m-%d')
-
-                        print("日期格式验证通过，正在刷新数据...")
-                        # 刷新数据
-                        self._refresh_chart_data(start_date, end_date)
-                        self._update_chart_display()
-                        print(f"✅ 已切换到 {start_date} ~ {end_date} 的数据")
-                    except ValueError as ve:
-                        print(f"❌ 日期格式错误: {ve}")
-                        print("请使用 YYYY-MM-DD 格式，例如: 2024-01-15")
-                else:
-                    print("用户取消了结束日期输入")
-            else:
-                print("用户取消了开始日期输入")
-
-            root.destroy()
-
-        except ImportError as ie:
-            print(f"❌ tkinter 不可用: {ie}")
-            self._show_console_date_input()
-        except Exception as e:
-            print(f"❌ GUI 日期选择失败: {e}")
-            print("尝试使用控制台输入...")
-            self._show_console_date_input()
+        self._show_console_date_input()
 
     def _show_console_date_input(self):
-        """使用控制台输入日期（备用方案）"""
-        print("\n=== 控制台日期输入 ===")
+        """使用控制台输入日期"""
+        print("\n=== 日期输入 ===")
         try:
             start_date = input("请输入开始日期 (YYYY-MM-DD): ").strip()
-            if start_date:
-                end_date = input("请输入结束日期 (YYYY-MM-DD): ").strip()
-                if end_date:
-                    try:
-                        # 验证日期格式
-                        datetime.strptime(start_date, '%Y-%m-%d')
-                        datetime.strptime(end_date, '%Y-%m-%d')
+            if not start_date:
+                print("取消输入")
+                return
 
-                        print("正在刷新数据...")
-                        # 刷新数据
-                        self._refresh_chart_data(start_date, end_date)
-                        self._update_chart_display()
-                        print(f"✅ 已切换到 {start_date} ~ {end_date} 的数据")
-                    except ValueError as ve:
-                        print(f"❌ 日期格式错误: {ve}")
-                        print("请使用 YYYY-MM-DD 格式，例如: 2024-01-15")
+            end_date = input("请输入结束日期 (YYYY-MM-DD): ").strip()
+            if not end_date:
+                print("取消输入")
+                return
+
+            self._process_date_input(start_date, end_date)
+
         except KeyboardInterrupt:
-            print("\n用户取消了输入")
+            print("\n用户取消输入")
         except Exception as e:
-            print(f"❌ 控制台输入失败: {e}")
-            print("请手动重新运行程序并使用命令行参数指定日期")
+            print(f"控制台输入错误: {e}")
+
+    def _process_date_input(self, start_date, end_date):
+        """处理日期输入结果"""
+        try:
+            # 验证日期格式
+            datetime.strptime(start_date, '%Y-%m-%d')
+            datetime.strptime(end_date, '%Y-%m-%d')
+
+            print("日期格式验证通过，正在刷新数据...")
+            # 刷新数据
+            self._refresh_chart_data(start_date, end_date)
+            self._update_chart_display()
+            print(f"✅ 已切换到 {start_date} ~ {end_date} 的数据")
+        except ValueError as ve:
+            print(f"❌ 日期格式错误: {ve}")
+            print("请使用 YYYY-MM-DD 格式，例如: 2024-01-15")
 
     def _plot_candlestick(self, ax, df):
         """绘制蜡烛图"""
