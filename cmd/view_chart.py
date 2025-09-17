@@ -33,21 +33,56 @@ from chart_viewer import TradingChartViewer
 from datetime import datetime, timedelta
 
 def main():
-    """简单的图表查看示例"""
+    """交互式图表查看器"""
+    import argparse
+
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description='交互式K线图查看器')
+    parser.add_argument('--symbol', default='BTC/USDT', help='交易对符号 (默认: BTC/USDT)')
+    parser.add_argument('--timeframe', default='5m', help='时间框架 (默认: 5m)')
+    parser.add_argument('--days', type=int, default=7, help='查看最近几天的数据 (默认: 7)')
+    parser.add_argument('--static', action='store_true', help='使用静态模式（不支持交互）')
+    parser.add_argument('--save', help='保存图片到指定路径（自动使用静态模式）')
+
+    args = parser.parse_args()
+
     viewer = TradingChartViewer()
-    
-    # 默认查看最近7天的数据
+
+    # 计算日期范围
     end_date = datetime.now().strftime('%Y-%m-%d')
-    start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-    
-    print(f"查看 BTC/USDT 从 {start_date} 到 {end_date} 的5分钟K线图")
-    
-    viewer.plot_kline_with_trades(
-        symbol='BTC/USDT',
-        start_date=start_date,
-        end_date=end_date,
-        timeframe='5m'
-    )
+    start_date = (datetime.now() - timedelta(days=args.days)).strftime('%Y-%m-%d')
+
+    print(f"查看 {args.symbol} 从 {start_date} 到 {end_date} 的{args.timeframe}K线图")
+
+    if args.save:
+        print("保存模式：使用静态图表")
+        viewer.plot_kline_with_trades(
+            symbol=args.symbol,
+            start_date=start_date,
+            end_date=end_date,
+            timeframe=args.timeframe,
+            save_path=args.save,
+            interactive=False
+        )
+    elif args.static:
+        print("静态模式：不支持交互功能")
+        viewer.plot_kline_with_trades(
+            symbol=args.symbol,
+            start_date=start_date,
+            end_date=end_date,
+            timeframe=args.timeframe,
+            interactive=False
+        )
+    else:
+        print("交互模式：支持放大缩小和日期选择")
+        print("使用工具栏进行放大缩小，点击底部按钮切换日期范围")
+        viewer.plot_kline_with_trades(
+            symbol=args.symbol,
+            start_date=start_date,
+            end_date=end_date,
+            timeframe=args.timeframe,
+            interactive=True
+        )
 
 if __name__ == '__main__':
     main()
